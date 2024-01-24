@@ -12,9 +12,19 @@ name = "postmaster"
 
 [dependencies]
 actix-web = "4.4.1"
-env_logger = "0.10.1"
+config = "0.13.4"
+
+env_logger = "0.11.0"
 reqwest = "0.11.23"
 serde = { version = "1.0.195", features = ["derive"] }
+sqlx = { version = "0.7.3", features = [
+  "macros",
+  "chrono",
+  "postgres",
+  "uuid",
+  "migrate",
+  "runtime-tokio-rustls",
+] }
 tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
 
 [dev-dependencies]
