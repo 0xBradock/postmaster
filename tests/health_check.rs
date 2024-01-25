@@ -1,4 +1,5 @@
-use postmaster::startup::run;
+use postmaster::{configuration::get_configuration, startup::run};
+use sqlx::{Connection, PgConnection};
 use std::net::TcpListener;
 
 fn spawn_app() -> String {
@@ -34,19 +35,24 @@ async fn health_check_works() {
 async fn subscribe_returns_ok() {
     // Arrange
     let address = spawn_app();
+    let configuration = get_configuration().expect("Failed to read configuration.");
+    let connection_string = configuration.database.connection_string();
+    let mut connection = PgConnection::connect(&connection_string)
+        .await
+        .expect("Failed to connect to db");
     let client = reqwest::Client::new();
+    connection.ping();
 
     // Act
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
     let response = client
-        // Use the returned application address
         .post(&format!("{}/subscriptions", &address))
-        .header("Content-Type", "application/x-www-form-url-encoded")
+        .header("Content-Type", "application/x-www-form-urlencoded")
         .body(body)
         .send()
         .await
         .expect("Failed to execute request.");
-
+    println!("{:?}", response);
     // Assert
     assert_eq!(response.status().as_u16(), 200);
 }
