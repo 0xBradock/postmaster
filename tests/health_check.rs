@@ -55,6 +55,14 @@ async fn subscribe_returns_ok() {
     println!("{:?}", response);
     // Assert
     assert_eq!(response.status().as_u16(), 200);
+
+    let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
+        .fetch_one(&mut connection)
+        .await
+        .expect("Failed to fetch saved subscription.");
+
+    assert_eq!(saved.email, "ursula_le_guin@gmail.com");
+    assert_eq!(saved.name, "le guin");
 }
 
 #[actix_web::test]
