@@ -2,7 +2,7 @@
 
 > Going through [Zero to Production]()
 
-![build](https://github.com/0xbradock/postmaster/actions/workflows/general.yaml/badge.svg)
+![build](https://github.com/0xbradock/postmaster/actions/workflows/build.yaml/badge.svg)
 
 # Known Issues
 
