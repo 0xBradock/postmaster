@@ -3,7 +3,7 @@
 > Going through [Zero to Production]()
 
 <div align="center">
-  ![test-badge](https://github.com/0xbradock/postmaster/actions/workflows/general.yaml/badge.svg)
+  [![test-badge]](https://github.com/0xbradock/postmaster/actions/workflows/general.yaml/badge.svg)
 </div>
 
 # Known Issues
