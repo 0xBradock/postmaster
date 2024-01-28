@@ -1,7 +1,16 @@
+use secrecy::Secret;
+
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application_port: u16,
+    pub telemetry: TelemetrySettings,
+}
+
+#[derive(serde::Deserialize)]
+pub struct TelemetrySettings {
+    pub name: String,
+    pub level: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -24,17 +33,17 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 }
 
 impl DatabaseSettings {
-    pub fn connection_string(&self) -> String {
-        format!(
+    pub fn connection_string(&self) -> Secret<String> {
+        Secret::new(format!(
             "postgres://{}:{}@{}:{}/{}",
             self.username, self.password, self.host, self.port, self.database_name
-        )
+        ))
     }
 
-    pub fn connection_string_without_db(&self) -> String {
-        format!(
+    pub fn connection_string_default_db(&self) -> Secret<String> {
+        Secret::new(format!(
             "postgres://{}:{}@{}:{}/postgres",
             self.username, self.password, self.host, self.port
-        )
+        ))
     }
 }

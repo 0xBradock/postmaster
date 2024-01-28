@@ -1,9 +1,8 @@
-use actix_web::web::{self, Form};
-use actix_web::{post, HttpResponse, Responder};
+use actix_web::{post, HttpResponse};
+use actix_web::{web, Responder};
 use chrono;
 use serde::Deserialize;
 use sqlx::PgPool;
-use tracing::{event, span, Level};
 use uuid::Uuid;
 
 #[derive(Deserialize)]
@@ -12,22 +11,31 @@ pub struct SubscriptionForm {
     email: String,
 }
 
+#[tracing::instrument(
+    name = "Adding new subscriber",
+    skip(form, connection),
+    fields(
+        subscrier_email = %form.email,
+        subscrier_name = %form.name,
+    )
+)]
 #[post("/subscriptions")]
 pub async fn subscriptions(
-    form: Form<SubscriptionForm>,
+    form: web::Form<SubscriptionForm>,
     connection: web::Data<PgPool>,
 ) -> impl Responder {
-    // let request_id = Uuid::new_v4();
-    let span = span!(Level::TRACE, "subscriber-span");
-    let _guard = span.enter();
+    match insert_subscriber(&connection, &form).await {
+        Ok(_) => HttpResponse::Created().finish(),
+        Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
 
-    event!(
-        Level::TRACE,
-        email = %form.email,
-        name = form.name,
-        "Saving new subscriber to database"
-    );
-    match sqlx::query!(
+#[tracing::instrument(name = "Saving new subscriber to database", skip(form, connection))]
+pub async fn insert_subscriber(
+    connection: &PgPool,
+    form: &SubscriptionForm,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
         r#"
     INSERT INTO subscriptions (id, email, name, subscribed_at)
         VALUES ($1, $2, $3, $4)
@@ -37,16 +45,8 @@ pub async fn subscriptions(
         form.name,
         chrono::Utc::now(),
     )
-    .execute(connection.get_ref())
-    .await
-    {
-        Ok(_) => {
-            event!(Level::TRACE, "New subscriber details have been saved");
-            HttpResponse::Ok().finish()
-        }
-        Err(e) => {
-            event!(Level::TRACE, "Failed to execute query: {:?}", e);
-            HttpResponse::InternalServerError().finish()
-        }
-    }
+    .execute(connection)
+    .await?;
+
+    Ok(())
 }

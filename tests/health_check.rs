@@ -1,7 +1,10 @@
+use once_cell::sync::Lazy;
 use postmaster::{
     configuration::{get_configuration, DatabaseSettings},
     startup::run,
+    telemetry::{get_subscriber, init_subscriber},
 };
+use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
@@ -11,7 +14,30 @@ struct TestApp {
     db_pool: PgPool,
 }
 
+static TRACING: Lazy<()> = Lazy::new(|| {
+    let configuration = get_configuration().expect("Failed to read configuration.");
+
+    if std::env::var("TEST_LOG").is_ok() {
+        let subscriber = get_subscriber(
+            configuration.telemetry.name,
+            configuration.telemetry.level,
+            std::io::stdout,
+        );
+        init_subscriber(subscriber);
+    } else {
+        let subscriber = get_subscriber(
+            configuration.telemetry.name,
+            configuration.telemetry.level,
+            std::io::sink,
+        );
+        init_subscriber(subscriber);
+    };
+});
+
 async fn spawn_app() -> TestApp {
+    // Only executes the first time
+    Lazy::force(&TRACING);
+
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
     let port = listener.local_addr().unwrap().port();
     let address = format!("http://127.0.0.1:{}", port);
@@ -19,6 +45,7 @@ async fn spawn_app() -> TestApp {
     let mut configuration = get_configuration().expect("Failed to read configuration.");
     configuration.database.database_name = Uuid::new_v4().to_string();
     let db_pool = configure_database(&configuration.database).await;
+
     let server = run(listener, db_pool.clone()).expect("Failed to bind address");
     let _ = tokio::spawn(server);
 
@@ -26,18 +53,20 @@ async fn spawn_app() -> TestApp {
 }
 
 pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
-    let mut connection = PgConnection::connect(&config.connection_string_without_db())
-        .await
-        .expect("fdasfas");
+    let mut connection =
+        PgConnection::connect(config.connection_string_default_db().expose_secret())
+            .await
+            .expect("Failed to connect to database");
 
     connection
         .execute(&*format!(r#"CREATE DATABASE "{}";"#, config.database_name))
         .await
         .expect("Failed to create database.");
 
-    let db_pool = PgPool::connect(&config.connection_string())
+    let db_pool = PgPool::connect(config.connection_string().expose_secret())
         .await
-        .expect("Failed to connect to Postgres.");
+        .expect("Failed to connect to Postgres");
+
     sqlx::migrate!("./migrations")
         .run(&db_pool)
         .await
@@ -58,7 +87,7 @@ async fn health_check_works() {
         .get(&format!("{}/health", &app.address))
         .send()
         .await
-        .expect("Failed to execute request.");
+        .expect("Failed to execute request");
 
     // Assert
     assert!(response.status().is_success());
@@ -79,11 +108,10 @@ async fn subscribe_returns_ok() {
         .body(body)
         .send()
         .await
-        .expect("Failed to execute request.");
-    println!("{:?}", response);
+        .expect("Failed to execute request");
 
     // Assert
-    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(response.status().as_u16(), 201);
 
     let saved = sqlx::query!("SELECT email, name FROM subscriptions",)
         .fetch_one(&app.db_pool)

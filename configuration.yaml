@@ -5,3 +5,6 @@ database:
   username: "postgres"
   password: "password"
   database_name: "newsletter"
+telemetry:
+  name: "postmaster"
+  level: "info"
