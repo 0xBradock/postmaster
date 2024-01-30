@@ -4,6 +4,10 @@
 
 ![build](https://github.com/0xbradock/postmaster/actions/workflows/build.yaml/badge.svg)
 
+# Tooling
+
+- [rustsec.org](https://rustsec.org/): Audit
+
 # Known Issues
 
 - Missing a `tear_down` method in the e2e tests to `DROP` the created databases ([sqlx::test](https://docs.rs/sqlx/latest/sqlx/attr.test.html)).
