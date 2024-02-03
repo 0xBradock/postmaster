@@ -4,7 +4,7 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::domain::{NewSubscriber, SubscriberName, SubscriberEmail};
+use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 
 #[derive(Deserialize)]
 pub struct SubscriptionForm {
@@ -25,21 +25,25 @@ pub async fn subscriptions(
     form: web::Form<SubscriptionForm>,
     connection: web::Data<PgPool>,
 ) -> impl Responder {
-    let name = match SubscriberName::parse(form.0.name) {
-        Ok(name) => name,
+    let form = match form.0.try_into() {
+        Ok(form) => form,
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
 
-    let email = match SubscriberEmail::parse(form.0.email) {
-        Ok(email) => email,
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
-
-    let sub = &NewSubscriber { email, name };
-
-    match insert_subscriber(&connection, sub).await {
+    match insert_subscriber(&connection, &form).await {
         Ok(_) => HttpResponse::Created().finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
+    }
+}
+
+impl TryFrom<SubscriptionForm> for NewSubscriber {
+    type Error = String;
+
+    fn try_from(form: SubscriptionForm) -> Result<Self, Self::Error> {
+        let name = SubscriberName::parse(form.name)?;
+        let email = SubscriberEmail::parse(form.email)?;
+
+        Ok(NewSubscriber { email, name })
     }
 }
 
