@@ -4,7 +4,7 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::domain::{NewSubscriber, SubscriberName};
+use crate::domain::{NewSubscriber, SubscriberName, SubscriberEmail};
 
 #[derive(Deserialize)]
 pub struct SubscriptionForm {
@@ -25,11 +25,18 @@ pub async fn subscriptions(
     form: web::Form<SubscriptionForm>,
     connection: web::Data<PgPool>,
 ) -> impl Responder {
-    let name = SubscriberName::parse(form.0.name).expect("Failed to parse");
-    let sub = &NewSubscriber {
-        email: form.0.email,
-        name: name,
+    let name = match SubscriberName::parse(form.0.name) {
+        Ok(name) => name,
+        Err(_) => return HttpResponse::BadRequest().finish(),
     };
+
+    let email = match SubscriberEmail::parse(form.0.email) {
+        Ok(email) => email,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
+
+    let sub = &NewSubscriber { email, name };
+
     match insert_subscriber(&connection, sub).await {
         Ok(_) => HttpResponse::Created().finish(),
         Err(_) => HttpResponse::InternalServerError().finish(),
@@ -50,12 +57,16 @@ pub async fn insert_subscriber(
         VALUES ($1, $2, $3, $4)
     "#,
         Uuid::new_v4(),
-        subscriber.email,
-        subscriber.name.inner_ref(),
+        subscriber.email.as_ref(),
+        subscriber.name.as_ref(),
         chrono::Utc::now(),
     )
     .execute(connection)
-    .await?;
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to execute query: {:?}", e);
+        e
+    })?;
 
     Ok(())
 }

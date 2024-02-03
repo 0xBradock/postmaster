@@ -156,7 +156,7 @@ async fn subscribe_returns_missing() {
 }
 
 #[actix_web::test]
-async fn subscribe_with_fields_present_but_empty() {
+async fn subscribe_returns_client_error_with_fields_present_but_empty() {
     // Arrange
     let app = spawn_app().await;
     let client = reqwest::Client::new();
@@ -179,9 +179,9 @@ async fn subscribe_with_fields_present_but_empty() {
 
         // Assert
         assert_eq!(
-            201,
+            400,
             response.status().as_u16(),
-            "The API did not return 200 when the payload was {}.",
+            "The API returns 400 when the payload was '{}'.",
             error_message
         );
     }
