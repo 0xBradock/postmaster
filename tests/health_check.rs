@@ -55,6 +55,7 @@ async fn spawn_app() -> TestApp {
         configuration.email_client.base_url,
         sender_email,
         configuration.email_client.authorization_token,
+        std::time::Duration::from_millis(100),
     );
 
     // Server

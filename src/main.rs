@@ -27,6 +27,7 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to connect to database");
 
     // HTTP Client
+    let timeout = configuration.email_client.timeout();
     let sender_email = configuration
         .email_client
         .sender()
@@ -35,6 +36,7 @@ async fn main() -> std::io::Result<()> {
         configuration.email_client.base_url,
         sender_email,
         configuration.email_client.authorization_token,
+        timeout,
     );
 
     // Server
