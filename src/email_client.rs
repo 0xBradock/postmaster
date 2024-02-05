@@ -55,7 +55,7 @@ impl EmailClient {
             "X-Postmark-Server-Token",
             self.authorization_token.expose_secret(),
         );
-        builder.send().await?;
+        builder.send().await?.error_for_status()?;
 
         Ok(())
     }
@@ -65,7 +65,7 @@ impl EmailClient {
 mod tests {
     use super::*;
     use crate::domain::SubscriberEmail;
-    use claim::assert_ok;
+    use claim::{assert_err, assert_ok};
     use fake::{
         faker::{
             internet::en::SafeEmail,
@@ -94,6 +94,31 @@ mod tests {
                 false
             }
         }
+    }
+
+    #[tokio::test]
+    async fn send_email_fails_with_500_response() {
+        // Arrange
+        let mock_server = MockServer::start().await;
+        Mock::given(any())
+            .respond_with(ResponseTemplate::new(500))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        let sender = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
+        let email_client = EmailClient::new(mock_server.uri(), sender, Secret::new(Faker.fake()));
+        let subscriber_email = SubscriberEmail::parse(SafeEmail().fake()).unwrap();
+        let subject: String = Sentence(1..2).fake();
+        let content: String = Paragraph(1..10).fake();
+
+        // Act
+        let response = email_client
+            .send_email(subscriber_email, &subject, &content, &content)
+            .await;
+
+        // Assert
+        assert_err!(response);
     }
 
     #[tokio::test]
