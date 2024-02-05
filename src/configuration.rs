@@ -1,10 +1,13 @@
 use secrecy::Secret;
 
+use crate::domain::SubscriberEmail;
+
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application_port: u16,
     pub telemetry: TelemetrySettings,
+    pub email_client: EmailClientSettings,
 }
 
 #[derive(serde::Deserialize)]
@@ -14,22 +17,25 @@ pub struct TelemetrySettings {
 }
 
 #[derive(serde::Deserialize)]
+pub struct EmailClientSettings {
+    pub base_url: String,
+    pub sender_email: String,
+    pub authorization_token: Secret<String>,
+}
+
+impl EmailClientSettings {
+    pub fn sender(&self) -> Result<SubscriberEmail, String> {
+        SubscriberEmail::parse(self.sender_email.clone())
+    }
+}
+
+#[derive(serde::Deserialize)]
 pub struct DatabaseSettings {
     pub username: String,
     pub password: String,
     pub port: u16,
     pub host: String,
     pub database_name: String,
-}
-
-pub fn get_configuration() -> Result<Settings, config::ConfigError> {
-    let settings = config::Config::builder()
-        .add_source(config::File::new(
-            "configuration.yaml",
-            config::FileFormat::Yaml,
-        ))
-        .build()?;
-    settings.try_deserialize::<Settings>()
 }
 
 impl DatabaseSettings {
@@ -46,4 +52,14 @@ impl DatabaseSettings {
             self.username, self.password, self.host, self.port
         ))
     }
+}
+
+pub fn get_configuration() -> Result<Settings, config::ConfigError> {
+    let settings = config::Config::builder()
+        .add_source(config::File::new(
+            "configuration.yaml",
+            config::FileFormat::Yaml,
+        ))
+        .build()?;
+    settings.try_deserialize::<Settings>()
 }

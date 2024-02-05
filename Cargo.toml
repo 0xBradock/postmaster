@@ -16,7 +16,7 @@ chrono = "0.4.33"
 claim = "0.5.0"
 config = "0.13.4"
 log = "0.4.20"
-reqwest = "0.11.23"
+reqwest = { version = "0.11.23", default-features = false, features = ["json", "rustls-tls"]}
 secrecy = { version = "0.8.0", features = ["serde"] }
 serde = { version = "1.0.195", features = ["derive"] }
 sqlx = { version = "0.7.3", features = [
@@ -27,7 +27,7 @@ sqlx = { version = "0.7.3", features = [
   "migrate",
   "runtime-tokio-rustls",
 ] }
-tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.35.1", features = ["macros", "rt-multi-thread", "rt"] }
 tracing = "0.1.40"
 tracing-actix-web = "0.7.9"
 tracing-bunyan-formatter = "0.3.9"
@@ -43,4 +43,5 @@ once_cell = "1.19.0"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 rand = "0.8.5"
-reqwest = "0.11.23"
+serde_json = "1.0.113"
+wiremock = "0.5.22"

@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use postmaster::{
     configuration::{get_configuration, DatabaseSettings},
+    email_client::EmailClient,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -35,18 +36,32 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 });
 
 async fn spawn_app() -> TestApp {
-    // Only executes the first time
+    // Tracing - Only executes the first time
     Lazy::force(&TRACING);
 
-    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
-    let port = listener.local_addr().unwrap().port();
-    let address = format!("http://127.0.0.1:{}", port);
-
+    // Configuration
     let mut configuration = get_configuration().expect("Failed to read configuration.");
+
+    // Database
     configuration.database.database_name = Uuid::new_v4().to_string();
     let db_pool = configure_database(&configuration.database).await;
 
-    let server = run(listener, db_pool.clone()).expect("Failed to bind address");
+    // HTTP Client
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        sender_email,
+        configuration.email_client.authorization_token,
+    );
+
+    // Server
+    let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind random port");
+    let port = listener.local_addr().unwrap().port();
+    let address = format!("http://127.0.0.1:{}", port);
+    let server = run(listener, db_pool.clone(), email_client).expect("Failed to bind address");
     let _ = tokio::spawn(server);
 
     TestApp { address, db_pool }

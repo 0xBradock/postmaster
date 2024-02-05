@@ -29,6 +29,7 @@ Tests:
 - [quickcheck_macros](https://crates.io/crates/quickcheck_macros): Macros for `quickcheck`
 - [rand](https://docs.rs/rand/latest/rand/): Random number generator
 - [validator](https://crates.io/crates/validator): Simple struct validation
+- [wiremock](https://github.com/lukemathwalker/wiremock-rs): Mocking HTTP
 
 # Known Issues
 

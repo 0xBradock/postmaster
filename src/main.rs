@@ -1,5 +1,6 @@
 use postmaster::{
     configuration::get_configuration,
+    email_client::EmailClient,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
 };
@@ -25,8 +26,19 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("Failed to connect to database");
 
+    // HTTP Client
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid email sender");
+    let email_client = EmailClient::new(
+        configuration.email_client.base_url,
+        sender_email,
+        configuration.email_client.authorization_token,
+    );
+
     // Server
     let address = format!("127.0.0.1:{}", configuration.application_port);
     let address = TcpListener::bind(address)?;
-    run(address, db_pool)?.await
+    run(address, db_pool, email_client)?.await
 }
