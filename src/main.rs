@@ -1,5 +1,6 @@
+use actix_web::dev::Server;
 use postmaster::{
-    configuration::get_configuration,
+    configuration::{get_configuration, Settings},
     email_client::EmailClient,
     startup::run,
     telemetry::{get_subscriber, init_subscriber},
@@ -13,6 +14,13 @@ async fn main() -> std::io::Result<()> {
     // Configuration
     let configuration = get_configuration().expect("Failed to read configuration.");
 
+    let server = build(configuration).await?;
+    server.await?;
+
+    Ok(())
+}
+
+async fn build(configuration: Settings) -> Result<Server, std::io::Error> {
     // Telemetry
     let subscriber = get_subscriber(
         configuration.telemetry.name,
@@ -40,7 +48,10 @@ async fn main() -> std::io::Result<()> {
     );
 
     // Server
-    let address = format!("127.0.0.1:{}", configuration.application_port);
+    let address = format!(
+        "{}:{}",
+        configuration.application.host, configuration.application.port
+    );
     let address = TcpListener::bind(address)?;
-    run(address, db_pool, email_client)?.await
+    run(address, db_pool, email_client)
 }
